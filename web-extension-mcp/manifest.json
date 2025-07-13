@@ -3,8 +3,11 @@
     "name": "MCP WebSocket Listener",
     "version": "1.0",
     "description": "Listens to WebSocket for MCP messages",
-    "permissions": ["scripting", "<all_urls>", "tabs"],
+    "permissions": ["scripting", "<all_urls>", "tabs", "storage"],
     "background": {
         "scripts": ["background.js"]
+    },
+    "options_ui": {
+        "page": "options.html"
     }
 }

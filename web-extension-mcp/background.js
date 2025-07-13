@@ -4,11 +4,19 @@ function log(...args) {
     console.log(...args)
 }
 
-function connectWebSocket() {
+// Helper to get the port from storage and connect
+async function getPortAndConnect() {
+    const items = await browser.storage.local.get(['wsPort']);
+    const port = items.wsPort || 8080;
+    connectWebSocket(port);
+}
+
+function connectWebSocket(port) {
 
   log("Connecting to WebSocket...");
 
-  socket = new WebSocket("ws://localhost:8080");
+  const wsUrl = `ws://localhost:${port}`;
+  socket = new WebSocket(wsUrl);
 
   socket.addEventListener('open', () => {
     log("WebSocket connection established.");
@@ -26,7 +34,7 @@ function connectWebSocket() {
 
   socket.addEventListener('close', () => {
     log("WebSocket closed. Retrying in 3s...");
-    setTimeout(connectWebSocket, 3000);
+    setTimeout(getPortAndConnect, 3000); // Retry using the same port
   });
 
   socket.addEventListener('error', (err) => {
@@ -83,4 +91,12 @@ async function handleMessage(obj) {
     }
 }
 
-connectWebSocket();
+// On extension startup, get port and connect
+getPortAndConnect();
+
+// Listen for changes to the port and reconnect
+browser.storage.onChanged.addListener((changes, area) => {
+    if (area === 'local' && changes.wsPort) {
+        getPortAndConnect();
+    }
+});

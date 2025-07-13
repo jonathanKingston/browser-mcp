@@ -359,5 +359,11 @@ class BrowserWebSocketServer {
   }
 }
 
+// Get port from command-line argument, environment variable, or default to 8080
+const port =
+  process.argv[2] ? parseInt(process.argv[2], 10) :
+  process.env.PORT ? parseInt(process.env.PORT, 10) :
+  8080;
+
 // Store an instance externally for singleton-like access
-browserWebSocketServer = new BrowserWebSocketServer(8080);
+browserWebSocketServer = new BrowserWebSocketServer(port);
