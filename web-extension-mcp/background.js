@@ -12,7 +12,6 @@ function connectWebSocket() {
 
   socket.addEventListener('open', () => {
     log("WebSocket connection established.");
-    socket.send("ping");
   });
 
   socket.addEventListener('message', (event) => {
@@ -35,45 +34,49 @@ function connectWebSocket() {
   });
 }
 
-const messages = [
-    tabsQuery,
-    tabsCreate,
-    tabsReload,
-];
-const messageStrings = messages.map(fn => fn.name);
-
 async function handleMessage(obj) {
     log('handleMessage', obj);
-    if (typeof obj.type === "string" && messageStrings.includes(obj.type)) {
-        const fn = messages.find(fn => fn.name === obj.type);
-        log('calling method', obj.type, obj.arguments)
-        if (fn) {
-            const arguments = obj.arguments || [];
-            const response = await fn(...arguments);
-            const stringifiedResponse = JSON.stringify({
+    if (typeof obj.type === "string" && obj.type.startsWith("tabs.")) {
+        const methodName = obj.type.slice("tabs.".length);
+        if (typeof browser.tabs[methodName] === "function") {
+            try {
+                let args = obj.args || [];
+                if (!Array.isArray(args)) {
+                    args = [args];
+                }
+                log('calling browser.tabs method', methodName, args);
+                const response = await browser.tabs[methodName](...args);
+                const stringifiedResponse = JSON.stringify({
+                    responseType: obj.type,
+                    responseGuid: obj.guid || null,
+                    response: response
+                });
+                log("response", response);
+                socket.send(stringifiedResponse);
+            } catch (e) {
+                log("Error calling browser.tabs method", methodName, e);
+                socket.send(JSON.stringify({
+                    responseType: obj.type,
+                    responseGuid: obj.guid || null,
+                    error: e.message
+                }));
+            }
+        } else {
+            log("Unknown or unsupported tabs method:", methodName);
+            socket.send(JSON.stringify({
                 responseType: obj.type,
                 responseGuid: obj.guid || null,
-                response: response
-            });
-            log("response", response)
-            socket.send(stringifiedResponse);
+                error: `Unknown or unsupported tabs method: ${methodName}`
+            }));
         }
+    } else {
+        log("Unknown or unsupported message type:", obj.type);
+        socket.send(JSON.stringify({
+            responseType: obj.type,
+            responseGuid: obj.guid || null,
+            error: `Unknown or unsupported message type: ${obj.type}`
+        }));
     }
-}
-
-async function tabsQuery(queryInfo = {}) {
-    log("get tabs", queryInfo)
-    return browser.tabs.query(queryInfo);
-}
-
-async function tabsCreate(createProperties) {
-    log("get tabs", createProperties)
-    return browser.tabs.create(createProperties);
-}
-
-async function tabsReload(...args) {
-    log("get reload", ...args)
-    return browser.tabs.reload(...args);
 }
 
 connectWebSocket();
