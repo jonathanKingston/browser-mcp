@@ -112,6 +112,48 @@ server.registerTool(
     }
 );
 
+const createWindow = z.object({
+  allowScriptsToClose: z.boolean().optional().describe("Allow scripts running in the window to close the window by calling window.close()."),
+  cookieStoreId: z.string().optional().describe("Cookie store ID for all tabs created when the window is opened."),
+  focused: z.boolean().optional().describe("Whether the new window will be focused. Defaults to true."),
+  height: z.number().optional().describe("The height in pixels of the new window, including the frame."),
+  incognito: z.boolean().optional().describe("Whether the new window should be an incognito (private) window."),
+  left: z.number().optional().describe("The number of pixels to position the new window from the left edge of the screen."),
+  state: z.enum(["normal", "minimized", "maximized", "fullscreen"]).optional().describe("The initial state of the window."),
+  tabId: z.number().optional().describe("If included, moves a tab of the specified ID from an existing window into the new window."),
+  titlePreface: z.string().optional().describe("A string to add to the beginning of the browser window's title."),
+  top: z.number().optional().describe("The number of pixels to position the new window from the top edge of the screen."),
+  type: z.enum(["normal", "popup", "panel", "detached_panel"]).optional().describe("Specifies what type of browser window to create."),
+  url: z.union([z.string(), z.array(z.string())]).optional().describe("A URL or array of URLs to open as tabs in the window."),
+  width: z.number().optional().describe("The width in pixels of the new window, including the frame.")
+});
+
+server.registerTool(
+    "windowsCreate",
+    {
+      title: "Create browser window",
+      description: "Create a new browser window",
+      inputSchema: createInputSchema(createWindow),
+      outputSchema: createOutputSchema(z.object({
+        id: z.number(),
+        focused: z.boolean(),
+        top: z.number(),
+        left: z.number(),
+        width: z.number(),
+        height: z.number(),
+        incognito: z.boolean(),
+        type: z.string(),
+        state: z.string(),
+        alwaysOnTop: z.boolean().optional(),
+        tabs: z.array(z.unknown()).optional(),
+        title: z.string().optional()
+      }))
+    },
+    async (...args) => {
+        return await handleConnection('windows.create', ...args);
+    }
+);
+
 async function handleConnection(type, message) {
   // The zod conversion in the mcp sdk doesn't allow nested objects.
   // we want to trim out additional props before passing this onto the browser.
